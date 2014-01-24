@@ -7,14 +7,14 @@ A tool for transforming `go test`'s benchmark output a bit to make it nicer for 
 Go benchmarks are great, particularly when used in concert with benchcmp. But the output can be a bit hard to
 read:
 
-![before](/screenshots/before.png")
+![before](/screenshots/before.png)
 
 # Solution
 
     $ go get github.com/cespare/prettybench
     $ go test -bench=. | prettytest
 
-![after](/screenshots/after.png")
+![after](/screenshots/after.png)
 
 * Column headers
 * Columns are aligned
