@@ -12,7 +12,7 @@ read:
 ## Solution
 
     $ go get github.com/cespare/prettybench
-    $ go test -bench=. | prettytest
+    $ go test -bench=. | prettybench
 
 ![after](/screenshots/after.png)
 
