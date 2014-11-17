@@ -20,9 +20,7 @@ var noPassthrough = flag.Bool("no-passthrough", false, "Don't print non-benchmar
 type BenchOutputGroup struct {
 	Lines []*bench.Bench
 	// Columns which are in use
-	MegaBytesPresent  bool
-	BytesAllocPresent bool
-	AllocsPresent     bool
+	Measured int
 }
 
 type Table struct {
@@ -35,13 +33,13 @@ func (g *BenchOutputGroup) String() string {
 		return ""
 	}
 	columnNames := []string{"benchmark", "iter", "time/iter"}
-	if g.MegaBytesPresent {
+	if (g.Measured & bench.MbS) > 0 {
 		columnNames = append(columnNames, "throughput")
 	}
-	if g.BytesAllocPresent {
+	if (g.Measured & bench.BOp) > 0 {
 		columnNames = append(columnNames, "bytes alloc")
 	}
-	if g.AllocsPresent {
+	if (g.Measured & bench.AllocsOp) > 0 {
 		columnNames = append(columnNames, "allocs")
 	}
 	table := &Table{Cells: [][]string{columnNames}}
@@ -55,13 +53,13 @@ func (g *BenchOutputGroup) String() string {
 
 	for _, line := range g.Lines {
 		row := []string{line.Name, FormatIterations(line.N), timeFormatFunc(line.NsOp)}
-		if g.MegaBytesPresent {
+		if (g.Measured & bench.MbS) > 0 {
 			row = append(row, FormatMegaBytesPerSecond(line))
 		}
-		if g.BytesAllocPresent {
+		if (g.Measured & bench.BOp) > 0 {
 			row = append(row, FormatBytesAllocPerOp(line))
 		}
-		if g.AllocsPresent {
+		if (g.Measured & bench.AllocsOp) > 0 {
 			row = append(row, FormatAllocsPerOp(line))
 		}
 		table.Cells = append(table.Cells, row)
@@ -149,15 +147,7 @@ func FormatAllocsPerOp(l *bench.Bench) string {
 
 func (g *BenchOutputGroup) AddLine(line *bench.Bench) {
 	g.Lines = append(g.Lines, line)
-	if (line.Measured & bench.MbS) > 0 {
-		g.MegaBytesPresent = true
-	}
-	if (line.Measured & bench.BOp) > 0 {
-		g.BytesAllocPresent = true
-	}
-	if (line.Measured & bench.AllocsOp) > 0 {
-		g.AllocsPresent = true
-	}
+	g.Measured |= line.Measured
 }
 
 var (
