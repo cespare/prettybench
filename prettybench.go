@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	benchcmp "golang.org/x/tools/cmd/benchcmp"
+	"github.com/cespare/prettybench/bench"
 )
 
 var noPassthrough = flag.Bool("no-passthrough", false, "Don't print non-benchmark lines")
 
 type BenchOutputGroup struct {
-	Lines []*benchcmp.Bench
+	Lines []*bench.Bench
 	// Columns which are in use
 	MegaBytesPresent  bool
 	BytesAllocPresent bool
@@ -126,36 +126,36 @@ func (g *BenchOutputGroup) TimeFormatFunc() func(float64) string {
 	}
 }
 
-func FormatMegaBytesPerSecond(l *benchcmp.Bench) string {
-	if (l.Measured & benchcmp.MbS) == 0 {
+func FormatMegaBytesPerSecond(l *bench.Bench) string {
+	if (l.Measured & bench.MbS) == 0 {
 		return ""
 	}
 	return fmt.Sprintf("%.2f MB/s", l.MbS)
 }
 
-func FormatBytesAllocPerOp(l *benchcmp.Bench) string {
-	if (l.Measured & benchcmp.BOp) == 0 {
+func FormatBytesAllocPerOp(l *bench.Bench) string {
+	if (l.Measured & bench.BOp) == 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d B/op", l.BOp)
 }
 
-func FormatAllocsPerOp(l *benchcmp.Bench) string {
-	if (l.Measured & benchcmp.AllocsOp) == 0 {
+func FormatAllocsPerOp(l *bench.Bench) string {
+	if (l.Measured & bench.AllocsOp) == 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d allocs/op", l.AllocsOp)
 }
 
-func (g *BenchOutputGroup) AddLine(line *benchcmp.Bench) {
+func (g *BenchOutputGroup) AddLine(line *bench.Bench) {
 	g.Lines = append(g.Lines, line)
-	if (line.Measured & benchcmp.MbS) > 0 {
+	if (line.Measured & bench.MbS) > 0 {
 		g.MegaBytesPresent = true
 	}
-	if (line.Measured & benchcmp.BOp) > 0 {
+	if (line.Measured & bench.BOp) > 0 {
 		g.BytesAllocPresent = true
 	}
-	if (line.Measured & benchcmp.AllocsOp) > 0 {
+	if (line.Measured & bench.AllocsOp) > 0 {
 		g.AllocsPresent = true
 	}
 }
@@ -166,7 +166,7 @@ var (
 	notBenchLineErr  = errors.New("Not a bench line")
 )
 
-func ParseLine(line string) (*benchcmp.Bench, error) {
+func ParseLine(line string) (*bench.Bench, error) {
 	if !benchLineMatcher.MatchString(line) {
 		return nil, notBenchLineErr
 	}
@@ -175,7 +175,7 @@ func ParseLine(line string) (*benchcmp.Bench, error) {
 		return nil, notBenchLineErr
 	}
 
-	return benchcmp.ParseLine(line)
+	return bench.ParseLine(line)
 }
 
 func main() {
