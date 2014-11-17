@@ -11,24 +11,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	benchcmp "golang.org/x/tools/cmd/benchcmp"
 )
 
 var noPassthrough = flag.Bool("no-passthrough", false, "Don't print non-benchmark lines")
 
-type BenchOutput struct {
-	Name             string
-	Iterations       int64
-	TimePerIteration time.Duration
-	// Optional fields
-	BytesPerSecond  *float64
-	BytesAllocPerOp *int64
-	AllocsPerOp     *int64
-}
-
 type BenchOutputGroup struct {
-	Lines []*BenchOutput
+	Lines []*benchcmp.Bench
 	// Columns which are in use
-	BytesPresent      bool
+	MegaBytesPresent  bool
 	BytesAllocPresent bool
 	AllocsPresent     bool
 }
@@ -43,7 +35,7 @@ func (g *BenchOutputGroup) String() string {
 		return ""
 	}
 	columnNames := []string{"benchmark", "iter", "time/iter"}
-	if g.BytesPresent {
+	if g.MegaBytesPresent {
 		columnNames = append(columnNames, "throughput")
 	}
 	if g.BytesAllocPresent {
@@ -62,15 +54,15 @@ func (g *BenchOutputGroup) String() string {
 	timeFormatFunc := g.TimeFormatFunc()
 
 	for _, line := range g.Lines {
-		row := []string{line.Name, FormatIterations(line.Iterations), timeFormatFunc(line.TimePerIteration)}
-		if g.BytesPresent {
-			row = append(row, FormatBytesPerSecond(line.BytesPerSecond))
+		row := []string{line.Name, FormatIterations(line.N), timeFormatFunc(line.NsOp)}
+		if g.MegaBytesPresent {
+			row = append(row, FormatMegaBytesPerSecond(line))
 		}
 		if g.BytesAllocPresent {
-			row = append(row, FormatBytesAllocPerOp(line.BytesAllocPerOp))
+			row = append(row, FormatBytesAllocPerOp(line))
 		}
 		if g.AllocsPresent {
-			row = append(row, FormatAllocsPerOp(line.AllocsPerOp))
+			row = append(row, FormatAllocsPerOp(line))
 		}
 		table.Cells = append(table.Cells, row)
 	}
@@ -102,80 +94,79 @@ func (g *BenchOutputGroup) String() string {
 	return buf.String()
 }
 
-func FormatIterations(iter int64) string {
-	return strconv.FormatInt(iter, 10)
+func FormatIterations(iter int) string {
+	return strconv.FormatInt(int64(iter), 10)
 }
 
-func (g *BenchOutputGroup) TimeFormatFunc() func(time.Duration) string {
+func (g *BenchOutputGroup) TimeFormatFunc() func(float64) string {
 	// Find the smallest time
-	smallest := g.Lines[0].TimePerIteration
+	smallest := g.Lines[0].NsOp
 	for _, line := range g.Lines[1:] {
-		if line.TimePerIteration < smallest {
-			smallest = line.TimePerIteration
+		if line.NsOp < smallest {
+			smallest = line.NsOp
 		}
 	}
 	switch {
-	case smallest < 10000*time.Nanosecond:
-		return func(d time.Duration) string {
-			return fmt.Sprintf("%d ns/op", d.Nanoseconds())
+	case smallest < float64(10000*time.Nanosecond):
+		return func(ns float64) string {
+			return fmt.Sprintf("%.2f ns/op", ns)
 		}
-	case smallest < time.Millisecond:
-		return func(d time.Duration) string {
-			return fmt.Sprintf("%.2f μs/op", float64(d.Nanoseconds())/1000)
+	case smallest < float64(time.Millisecond):
+		return func(ns float64) string {
+			return fmt.Sprintf("%.2f μs/op", ns/1000)
 		}
-	case smallest < 10*time.Second:
-		return func(d time.Duration) string {
-			return fmt.Sprintf("%.2f ms/op", d.Seconds()*1000)
+	case smallest < float64(10*time.Second):
+		return func(ns float64) string {
+			return fmt.Sprintf("%.2f ms/op", (ns / 1e6))
 		}
 	default:
-		return func(d time.Duration) string {
-			return fmt.Sprintf("%.2f s/op", d.Seconds())
+		return func(ns float64) string {
+			return fmt.Sprintf("%.2f s/op", ns/1e9)
 		}
 	}
 }
 
-func FormatBytesPerSecond(b *float64) string {
-	if b == nil {
+func FormatMegaBytesPerSecond(l *benchcmp.Bench) string {
+	if (l.Measured & benchcmp.MbS) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%.2f MB/s", *b/1e6)
+	return fmt.Sprintf("%.2f MB/s", l.MbS)
 }
 
-func FormatBytesAllocPerOp(b *int64) string {
-	if b == nil {
+func FormatBytesAllocPerOp(l *benchcmp.Bench) string {
+	if (l.Measured & benchcmp.BOp) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d B/op", *b)
+	return fmt.Sprintf("%d B/op", l.BOp)
 }
 
-func FormatAllocsPerOp(a *int64) string {
-	if a == nil {
+func FormatAllocsPerOp(l *benchcmp.Bench) string {
+	if (l.Measured & benchcmp.AllocsOp) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d allocs/op", *a)
+	return fmt.Sprintf("%d allocs/op", l.AllocsOp)
 }
 
-func (g *BenchOutputGroup) AddLine(line *BenchOutput) {
+func (g *BenchOutputGroup) AddLine(line *benchcmp.Bench) {
 	g.Lines = append(g.Lines, line)
-	if line.BytesPerSecond != nil {
-		g.BytesPresent = true
+	if (line.Measured & benchcmp.MbS) > 0 {
+		g.MegaBytesPresent = true
 	}
-	if line.BytesAllocPerOp != nil {
+	if (line.Measured & benchcmp.BOp) > 0 {
 		g.BytesAllocPresent = true
 	}
-	if line.AllocsPerOp != nil {
+	if (line.Measured & benchcmp.AllocsOp) > 0 {
 		g.AllocsPresent = true
 	}
 }
 
 var (
-	benchLineMatcher  = regexp.MustCompile(`^Benchmark.*\t.*\d+`)
-	okLineMatcher     = regexp.MustCompile(`^ok\s`)
-	notBenchLineErr   = errors.New("Not a bench line")
-	benchLineParseErr = errors.New("Unable to parse benchmark output line")
+	benchLineMatcher = regexp.MustCompile(`^Benchmark.*\t.*\d+`)
+	okLineMatcher    = regexp.MustCompile(`^ok\s`)
+	notBenchLineErr  = errors.New("Not a bench line")
 )
 
-func ParseLine(line string) (*BenchOutput, error) {
+func ParseLine(line string) (*benchcmp.Bench, error) {
 	if !benchLineMatcher.MatchString(line) {
 		return nil, notBenchLineErr
 	}
@@ -183,42 +174,8 @@ func ParseLine(line string) (*BenchOutput, error) {
 	if len(fields) < 3 {
 		return nil, notBenchLineErr
 	}
-	var err error
-	output := &BenchOutput{Name: strings.TrimSpace(fields[0])}
-	output.Iterations, err = strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64)
-	if err != nil {
-		return nil, notBenchLineErr
-	}
-	for _, field := range fields[2:] {
-		parts := strings.Split(strings.TrimSpace(field), " ")
-		if len(parts) != 2 {
-			return nil, benchLineParseErr
-		}
-		if parts[1] == "MB/s" {
-			value, err := strconv.ParseFloat(parts[0], 64)
-			if err != nil {
-				return nil, benchLineParseErr
-			}
-			value *= 1e6
-			output.BytesPerSecond = &value
-			continue
-		}
-		value, err := strconv.ParseInt(parts[0], 10, 64)
-		if err != nil {
-			return nil, benchLineParseErr
-		}
-		switch parts[1] {
-		case "ns/op":
-			output.TimePerIteration = time.Duration(value)
-		case "B/op":
-			output.BytesAllocPerOp = &value
-		case "allocs/op":
-			output.AllocsPerOp = &value
-		default:
-			return nil, benchLineParseErr
-		}
-	}
-	return output, nil
+
+	return benchcmp.ParseLine(line)
 }
 
 func main() {
