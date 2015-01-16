@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/prettybench/bench"
+	bench "golang.org/x/tools/benchmark/parse"
 )
 
 var noPassthrough = flag.Bool("no-passthrough", false, "Don't print non-benchmark lines")
 
 type BenchOutputGroup struct {
-	Lines []*bench.Bench
+	Lines []*bench.Benchmark
 	// Columns which are in use
 	Measured int
 }
@@ -33,13 +33,13 @@ func (g *BenchOutputGroup) String() string {
 		return ""
 	}
 	columnNames := []string{"benchmark", "iter", "time/iter"}
-	if (g.Measured & bench.MbS) > 0 {
+	if (g.Measured & bench.MBPerS) > 0 {
 		columnNames = append(columnNames, "throughput")
 	}
-	if (g.Measured & bench.BOp) > 0 {
+	if (g.Measured & bench.AllocedBytesPerOp) > 0 {
 		columnNames = append(columnNames, "bytes alloc")
 	}
-	if (g.Measured & bench.AllocsOp) > 0 {
+	if (g.Measured & bench.AllocsPerOp) > 0 {
 		columnNames = append(columnNames, "allocs")
 	}
 	table := &Table{Cells: [][]string{columnNames}}
@@ -52,14 +52,14 @@ func (g *BenchOutputGroup) String() string {
 	timeFormatFunc := g.TimeFormatFunc()
 
 	for _, line := range g.Lines {
-		row := []string{line.Name, FormatIterations(line.N), timeFormatFunc(line.NsOp)}
-		if (g.Measured & bench.MbS) > 0 {
+		row := []string{line.Name, FormatIterations(line.N), timeFormatFunc(line.NsPerOp)}
+		if (g.Measured & bench.MBPerS) > 0 {
 			row = append(row, FormatMegaBytesPerSecond(line))
 		}
-		if (g.Measured & bench.BOp) > 0 {
+		if (g.Measured & bench.AllocedBytesPerOp) > 0 {
 			row = append(row, FormatBytesAllocPerOp(line))
 		}
-		if (g.Measured & bench.AllocsOp) > 0 {
+		if (g.Measured & bench.AllocsPerOp) > 0 {
 			row = append(row, FormatAllocsPerOp(line))
 		}
 		table.Cells = append(table.Cells, row)
@@ -98,10 +98,10 @@ func FormatIterations(iter int) string {
 
 func (g *BenchOutputGroup) TimeFormatFunc() func(float64) string {
 	// Find the smallest time
-	smallest := g.Lines[0].NsOp
+	smallest := g.Lines[0].NsPerOp
 	for _, line := range g.Lines[1:] {
-		if line.NsOp < smallest {
-			smallest = line.NsOp
+		if line.NsPerOp < smallest {
+			smallest = line.NsPerOp
 		}
 	}
 	switch {
@@ -124,28 +124,28 @@ func (g *BenchOutputGroup) TimeFormatFunc() func(float64) string {
 	}
 }
 
-func FormatMegaBytesPerSecond(l *bench.Bench) string {
-	if (l.Measured & bench.MbS) == 0 {
+func FormatMegaBytesPerSecond(l *bench.Benchmark) string {
+	if (l.Measured & bench.MBPerS) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%.2f MB/s", l.MbS)
+	return fmt.Sprintf("%.2f MB/s", l.MBPerS)
 }
 
-func FormatBytesAllocPerOp(l *bench.Bench) string {
-	if (l.Measured & bench.BOp) == 0 {
+func FormatBytesAllocPerOp(l *bench.Benchmark) string {
+	if (l.Measured & bench.AllocedBytesPerOp) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d B/op", l.BOp)
+	return fmt.Sprintf("%d B/op", l.AllocedBytesPerOp)
 }
 
-func FormatAllocsPerOp(l *bench.Bench) string {
-	if (l.Measured & bench.AllocsOp) == 0 {
+func FormatAllocsPerOp(l *bench.Benchmark) string {
+	if (l.Measured & bench.AllocsPerOp) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d allocs/op", l.AllocsOp)
+	return fmt.Sprintf("%d allocs/op", l.AllocsPerOp)
 }
 
-func (g *BenchOutputGroup) AddLine(line *bench.Bench) {
+func (g *BenchOutputGroup) AddLine(line *bench.Benchmark) {
 	g.Lines = append(g.Lines, line)
 	g.Measured |= line.Measured
 }
@@ -156,7 +156,7 @@ var (
 	notBenchLineErr  = errors.New("Not a bench line")
 )
 
-func ParseLine(line string) (*bench.Bench, error) {
+func ParseLine(line string) (*bench.Benchmark, error) {
 	if !benchLineMatcher.MatchString(line) {
 		return nil, notBenchLineErr
 	}
