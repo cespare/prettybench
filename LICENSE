@@ -1,4 +1,4 @@
-Copyright (c) 2014 Caleb Spare
+Copyright (c) 2021 Caleb Spare and The Prettybench Contributors (https://github.com/KEINOS/go-prettybench/graphs/contributors).
 
 MIT License
 
