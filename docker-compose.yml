@@ -1,0 +1,29 @@
+# Docker Compose for Monthly Testing with Multiple Go Versions.
+# To run all tests locally, run:
+#   $ docker-compose up
+version: "3.9"
+services:
+  v1_14:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile_alpine
+      args:
+        VARIANT: 1.14
+  v1_15:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile_alpine
+      args:
+        VARIANT: 1.15
+  v1_16:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile_alpine
+      args:
+        VARIANT: 1.16
+  v1_17:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/Dockerfile_alpine
+      args:
+        VARIANT: 1.17

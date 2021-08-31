@@ -1,0 +1,18 @@
+name: go1.14
+
+on:
+  workflow_dispatch:
+  push:
+  schedule:
+    # Monthly test. Runs at 19:00 UTC (AM 04:00 JST) on day-of-month 1
+    - cron: '0 19 1 * *'
+
+jobs:
+  go1-14:
+    name: Run on Go v1.14
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run on Go 1.14
+        run: docker-compose up v1_14

@@ -1,0 +1,20 @@
+# Default Go version
+ARG VARIANT="1.14"
+
+# =============================================================================
+#  Main Stage
+# =============================================================================
+FROM golang:${VARIANT}-alpine
+
+RUN apk add --no-cache \
+    git \
+    alpine-sdk \
+    build-base
+
+COPY . /workspaces
+
+WORKDIR /workspaces
+
+RUN go mod download
+
+ENTRYPOINT go version && go test .
