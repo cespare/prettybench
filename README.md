@@ -4,8 +4,8 @@ A tool for transforming `go test`'s benchmark output a bit to make it nicer for 
 
 ## Problem
 
-Go benchmarks are great, particularly when used in concert with benchcmp. But the output can be a bit hard to
-read:
+Go benchmarks are great, particularly when used in concert with benchcmp. But
+the output can be a bit hard to read:
 
 ![before](/screenshots/before.png)
 
@@ -22,11 +22,14 @@ read:
 
 ## Notes
 
-* Right now the units for the time are chosen based on the smallest value in the column.
-* Prettybench has to buffer all the rows of output before it can print them (for column formatting), so you
-  won't see intermediate progress. If you want to see that too, you could tee your output so that you see the
-  unmodified version as well. If you do this, you'll want to use the prettybench's `-no-passthrough` flag so
-  it doesn't print all the other lines (because then they'd be printed twice):
+* Right now the units for the time are chosen based on the smallest value in the
+  column.
+* Prettybench has to buffer all the rows of output before it can print them (for
+  column formatting), so you won't see intermediate progress. If you want to see
+  that too, you could tee your output so that you see the unmodified version as
+  well. If you do this, you'll want to use the prettybench's `-no-passthrough`
+  flag so it doesn't print all the other lines (because then they'd be printed
+  twice):
 
         $ go test -bench=. | tee >(prettybench -no-passthrough)
 
