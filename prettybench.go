@@ -153,16 +153,16 @@ func (g *BenchOutputGroup) AddLine(line *parse.Benchmark) {
 var (
 	benchLineMatcher = regexp.MustCompile(`^Benchmark.*\t.*\d+`)
 	okLineMatcher    = regexp.MustCompile(`^ok\s`)
-	notBenchLineErr  = errors.New("Not a bench line")
+	errNotBenchLine  = errors.New("not a bench line")
 )
 
 func ParseLine(line string) (*parse.Benchmark, error) {
 	if !benchLineMatcher.MatchString(line) {
-		return nil, notBenchLineErr
+		return nil, errNotBenchLine
 	}
 	fields := strings.Split(line, "\t")
 	if len(fields) < 3 {
-		return nil, notBenchLineErr
+		return nil, errNotBenchLine
 	}
 
 	return parse.ParseLine(line)
@@ -176,7 +176,7 @@ func main() {
 		text := scanner.Text()
 		line, err := ParseLine(text)
 		switch err {
-		case notBenchLineErr:
+		case errNotBenchLine:
 			if okLineMatcher.MatchString(text) {
 				fmt.Print(currentBenchmark)
 				currentBenchmark = &BenchOutputGroup{}
