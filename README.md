@@ -11,8 +11,8 @@ the output can be a bit hard to read:
 
 ## Solution
 
-    $ go get github.com/cespare/prettybench
-    $ go test -bench=. | prettybench
+    $ go install github.com/cespare/prettybench@latest
+    $ go test -bench . | prettybench
 
 ![after](/screenshots/after.png)
 
@@ -31,7 +31,7 @@ the output can be a bit hard to read:
   flag so it doesn't print all the other lines (because then they'd be printed
   twice):
 
-        $ go test -bench=. | tee >(prettybench -no-passthrough)
+        $ go test -bench . | tee >(prettybench -no-passthrough)
 
 ## To Do (maybe)
 
